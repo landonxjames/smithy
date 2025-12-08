@@ -19,21 +19,28 @@
  *    javac -cp "smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar" convertBdd.java
  *
  * Usage:
- *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar" convertBdd <model-path> <service-shape-id>
+ *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar" convertBdd <model-path> <service-shape-id> <output-directory>
  *
  * Full working example:
- *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar" convertBdd endpointBddSmithyModel.smithy smithy.tests.endpointrules.stringarray#EndpointStringArrayService
+ *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar" convertBdd endpointBddSmithyModel.smithy smithy.tests.endpointrules.stringarray#EndpointStringArrayService convertBdd-output/
  *
  * Output:
- * - Prints the converted endpointBdd trait as JSON
+ * - Saves the complete updated model to <output-directory>/model.json
+ * - Prints the converted endpointBdd trait as JSON to console
  * - BDD version is automatically upgraded to 1.1 (minimum required)
  * - Base64-encoded nodes represent the optimized decision graph
  */
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.Node;
+import software.amazon.smithy.model.shapes.ModelSerializer;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.loader.ModelAssembler;
 import software.amazon.smithy.rulesengine.language.EndpointRuleSet;
 import software.amazon.smithy.rulesengine.logic.cfg.Cfg;
 import software.amazon.smithy.rulesengine.traits.EndpointBddTrait;
@@ -41,14 +48,15 @@ import software.amazon.smithy.rulesengine.traits.EndpointRuleSetTrait;
 
 public class convertBdd {
     public static void main(String[] args) {
-        if (args.length != 2) {
-            System.err.println("Usage: java convertBdd <model-path> <service-shape-id>");
-            System.err.println("Example: java convertBdd model/service.smithy com.example#MyService");
+        if (args.length != 3) {
+            System.err.println("Usage: java convertBdd <model-path> <service-shape-id> <output-directory>");
+            System.err.println("Example: java convertBdd model/service.smithy com.example#MyService output/");
             System.exit(1);
         }
 
         String modelPath = args[0];
         String serviceShapeId = args[1];
+        String outputDir = args[2];
 
         // Load your model with trait discovery
         Model model = Model.assembler()
@@ -82,8 +90,24 @@ public class convertBdd {
             .addShape(updatedService)
             .build();
 
+        // Save model to output directory
+        try {
+            Path outputPath = Paths.get(outputDir);
+            Files.createDirectories(outputPath);
+            
+            Path outputFile = outputPath.resolve("model.json");
+            ModelSerializer serializer = ModelSerializer.builder().build();
+            String modelJson = Node.prettyPrintJson(serializer.serialize(updatedModel));
+            Files.writeString(outputFile, modelJson);
+            
+            System.out.println("Conversion successful!");
+            System.out.println("Model saved to: " + outputFile.toAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Error writing model to output directory: " + e.getMessage());
+            System.exit(1);
+        }
+
         // Print the BDD trait
-        System.out.println("Conversion successful!");
         System.out.println("\nOriginal endpointRuleSet trait removed.");
         System.out.println("New endpointBdd trait added:");
         System.out.println(Node.prettyPrintJson(bddTrait.toNode()));
