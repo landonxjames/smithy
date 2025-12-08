@@ -46,6 +46,8 @@ import software.amazon.smithy.model.shapes.SmithyIdlModelSerializer;
 import software.amazon.smithy.model.loader.ModelAssembler;
 import software.amazon.smithy.rulesengine.language.EndpointRuleSet;
 import software.amazon.smithy.rulesengine.logic.cfg.Cfg;
+import software.amazon.smithy.rulesengine.logic.bdd.SiftingOptimization;
+import software.amazon.smithy.rulesengine.logic.bdd.NodeReversal;
 import software.amazon.smithy.rulesengine.traits.EndpointBddTrait;
 import software.amazon.smithy.rulesengine.traits.EndpointRuleSetTrait;
 
@@ -81,6 +83,8 @@ public class convertBdd {
         // Convert: RuleSet -> CFG -> BDD
         Cfg cfg = Cfg.from(ruleSet);
         EndpointBddTrait bddTrait = EndpointBddTrait.from(cfg);
+        bddTrait = SiftingOptimization.builder().cfg(cfg).build().apply(bddTrait);
+        bddTrait = new NodeReversal().apply(bddTrait);
 
         // Apply the BDD trait to the service
         ServiceShape updatedService = service.toBuilder()
