@@ -16,19 +16,19 @@
  *    ./gradlew :smithy-model:jar :smithy-utils:jar :smithy-rules-engine:jar :smithy-jmespath:jar :smithy-aws-traits:jar :smithy-waiters:jar :smithy-aws-endpoints:jar
  *
  * 2. Compile this script:
- *    javac -cp "smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar" convertBdd.java
+ *    javac -cp "smithy-rules-engine/build/libs/smithy-rules-engine-1.65.0.jar:smithy-model/build/libs/smithy-model-1.65.0.jar:smithy-utils/build/libs/smithy-utils-1.65.0.jar" convertBdd.java
  *
  * Usage (basic models):
- *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar" convertBdd <model-path> <service-shape-id> <output-directory>
+ *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.65.0.jar:smithy-model/build/libs/smithy-model-1.65.0.jar:smithy-utils/build/libs/smithy-utils-1.65.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.65.0.jar" convertBdd <model-path> <service-shape-id> <output-directory>
  *
  * Usage (AWS models - includes AWS-specific traits and functions):
- *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar:smithy-aws-traits/build/libs/smithy-aws-traits-1.64.0.jar:smithy-waiters/build/libs/smithy-waiters-1.64.0.jar:smithy-aws-endpoints/build/libs/smithy-aws-endpoints-1.64.0.jar" convertBdd <model-path> <service-shape-id> <output-directory>
+ *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.65.0.jar:smithy-model/build/libs/smithy-model-1.65.0.jar:smithy-utils/build/libs/smithy-utils-1.65.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.65.0.jar:smithy-aws-traits/build/libs/smithy-aws-traits-1.65.0.jar:smithy-waiters/build/libs/smithy-waiters-1.65.0.jar:smithy-aws-endpoints/build/libs/smithy-aws-endpoints-1.65.0.jar" convertBdd <model-path> <service-shape-id> <output-directory>
  *
  * Full working example (basic):
- *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar" convertBdd endpointBddSmithyModel.smithy smithy.tests.endpointrules.stringarray#EndpointStringArrayService convertBdd-output/
+ *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.65.0.jar:smithy-model/build/libs/smithy-model-1.65.0.jar:smithy-utils/build/libs/smithy-utils-1.65.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.65.0.jar" convertBdd endpointBddSmithyModel.smithy smithy.tests.endpointrules.stringarray#EndpointStringArrayService convertBdd-output/
  *
  * Full working example (AWS S3):
- *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.64.0.jar:smithy-model/build/libs/smithy-model-1.64.0.jar:smithy-utils/build/libs/smithy-utils-1.64.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.64.0.jar:smithy-aws-traits/build/libs/smithy-aws-traits-1.64.0.jar:smithy-waiters/build/libs/smithy-waiters-1.64.0.jar:smithy-aws-endpoints/build/libs/smithy-aws-endpoints-1.64.0.jar" convertBdd /path/to/s3.json com.amazonaws.s3#AmazonS3 s3-bdd-output/
+ *   java -cp ".:smithy-rules-engine/build/libs/smithy-rules-engine-1.65.0.jar:smithy-model/build/libs/smithy-model-1.65.0.jar:smithy-utils/build/libs/smithy-utils-1.65.0.jar:smithy-jmespath/build/libs/smithy-jmespath-1.65.0.jar:smithy-aws-traits/build/libs/smithy-aws-traits-1.65.0.jar:smithy-waiters/build/libs/smithy-waiters-1.65.0.jar:smithy-aws-endpoints/build/libs/smithy-aws-endpoints-1.65.0.jar" convertBdd /path/to/s3.json com.amazonaws.s3#AmazonS3 s3-bdd-output/
  *
  * Output:
  * - Saves JSON AST model to <output-directory>/model.json
@@ -53,6 +53,7 @@ import software.amazon.smithy.model.loader.ModelAssembler;
 import software.amazon.smithy.rulesengine.language.EndpointRuleSet;
 import software.amazon.smithy.rulesengine.logic.cfg.Cfg;
 import software.amazon.smithy.rulesengine.logic.bdd.SiftingOptimization;
+import software.amazon.smithy.rulesengine.logic.bdd.CostOptimization;
 import software.amazon.smithy.rulesengine.logic.bdd.NodeReversal;
 import software.amazon.smithy.rulesengine.traits.EndpointBddTrait;
 import software.amazon.smithy.rulesengine.traits.EndpointRuleSetTrait;
@@ -90,6 +91,7 @@ public class convertBdd {
         Cfg cfg = Cfg.from(ruleSet);
         EndpointBddTrait bddTrait = EndpointBddTrait.from(cfg);
         bddTrait = SiftingOptimization.builder().cfg(cfg).build().apply(bddTrait);
+        bddTrait = CostOptimization.builder().cfg(cfg).build().apply(bddTrait);
         bddTrait = new NodeReversal().apply(bddTrait);
 
         // Apply the BDD trait to the service
